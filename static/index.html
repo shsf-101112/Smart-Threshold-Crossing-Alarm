@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Threshold Crossing Alarm</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Smart Threshold Crossing Alarm</h1>
+            <div class="connection-status" id="connection-status">Disconnected</div>
+        </header>
+        
+        <div class="dashboard">
+            <div class="metrics-panel">
+                <h2>Current Metrics</h2>
+                <div class="metric-container" id="cpu-container">
+                    <div class="metric-label">CPU Usage</div>
+                    <div class="metric-value" id="cpu-value">0%</div>
+                    <div class="metric-bar-container">
+                        <div class="metric-bar" id="cpu-bar"></div>
+                    </div>
+                </div>
+                
+                <div class="metric-container" id="memory-container">
+                    <div class="metric-label">Memory Usage</div>
+                    <div class="metric-value" id="memory-value">0%</div>
+                    <div class="metric-bar-container">
+                        <div class="metric-bar" id="memory-bar"></div>
+                    </div>
+                </div>
+                
+                <div class="metric-container" id="bandwidth-container">
+                    <div class="metric-label">Bandwidth Usage</div>
+                    <div class="metric-value" id="bandwidth-value">0 Mbps</div>
+                    <div class="metric-bar-container">
+                        <div class="metric-bar" id="bandwidth-bar"></div>
+                    </div>
+                </div>
+                
+                <div class="metric-container" id="latency-container">
+                    <div class="metric-label">Network Latency</div>
+                    <div class="metric-value" id="latency-value">0 ms</div>
+                    <div class="metric-bar-container">
+                        <div class="metric-bar" id="latency-bar"></div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="start-simulation">Start Simulation</button>
+                    <button id="stop-simulation">Stop Simulation</button>
+                    <button id="trigger-spike">
+                        <button id="trigger-spike">Trigger Spike</button>
+                    <select id="spike-metric">
+                        <option value="cpu">CPU</option>
+                        <option value="memory">Memory</option>
+                        <option value="bandwidth">Bandwidth</option>
+                        <option value="latency">Latency</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="config-panel">
+                <h2>Threshold Configuration</h2>
+                <div class="threshold-container">
+                    <label for="cpu-warning">CPU Warning (%)</label>
+                    <input type="number" id="cpu-warning" min="0" max="100" value="70">
+                    <label for="cpu-critical">CPU Critical (%)</label>
+                    <input type="number" id="cpu-critical" min="0" max="100" value="90">
+                </div>
+                
+                <div class="threshold-container">
+                    <label for="memory-warning">Memory Warning (%)</label>
+                    <input type="number" id="memory-warning" min="0" max="100" value="65">
+                    <label for="memory-critical">Memory Critical (%)</label>
+                    <input type="number" id="memory-critical" min="0" max="100" value="85">
+                </div>
+                
+                <div class="threshold-container">
+                    <label for="bandwidth-warning">Bandwidth Warning (Mbps)</label>
+                    <input type="number" id="bandwidth-warning" min="0" max="1000" value="700">
+                    <label for="bandwidth-critical">Bandwidth Critical (Mbps)</label>
+                    <input type="number" id="bandwidth-critical" min="0" max="1000" value="900">
+                </div>
+                
+                <div class="threshold-container">
+                    <label for="latency-warning">Latency Warning (ms)</label>
+                    <input type="number" id="latency-warning" min="0" max="500" value="80">
+                    <label for="latency-critical">Latency Critical (ms)</label>
+                    <input type="number" id="latency-critical" min="0" max="500" value="150">
+                </div>
+                
+                <button id="update-thresholds">Update Thresholds</button>
+                <button id="reset-thresholds">Reset to Defaults</button>
+            </div>
+        </div>
+        
+        <div class="alarm-panel">
+            <h2>Alarm Status</h2>
+            <div class="alarm-container">
+                <div id="alarm-status" class="no-alarm">No Alarms</div>
+                <div id="alarm-history-container">
+                    <h3>Alarm History</h3>
+                    <div id="alarm-history"></div>
+                </div>
+            </div>
+            <div class="control-buttons">
+                <button id="clear-alarms">Clear Alarms</button>
+                <button id="toggle-sound">Enable Sound</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="alarm-sound" src="https://cdn.freesound.org/previews/397/397355_4284968-lq.mp3" preload="auto"></audio>
+    
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

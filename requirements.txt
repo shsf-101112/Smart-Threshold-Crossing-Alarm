@@ -1,0 +1,4 @@
+twisted>=22.4.0
+autobahn>=22.3.2
+pyopenssl>=22.0.0
+service_identity>=21.1.0
