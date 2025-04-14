@@ -83,20 +83,21 @@ function connectWebSocket() {
     socket = new WebSocket(wsUrl);
     
     // Connection opened
-    socket.addEventListener('open', (event) => {
-        console.log('Connected to server');
-        connectionStatus.textContent = 'Connected';
-        connectionStatus.classList.add('connected');
-        
-        // Clear any reconnect interval
-        if (reconnectInterval) {
-            clearInterval(reconnectInterval);
-            reconnectInterval = null;
-        }
-        
-        // Request current configuration
-        sendMessage('get_config', {});
-    });
+    // Fix get_config to use the expected action format:
+socket.addEventListener('open', (event) => {
+    console.log('Connected to server');
+    connectionStatus.textContent = 'Connected';
+    connectionStatus.classList.add('connected');
+    
+    // Clear any reconnect interval
+    if (reconnectInterval) {
+        clearInterval(reconnectInterval);
+        reconnectInterval = null;
+    }
+    
+    // Request current configuration
+    socket.send(JSON.stringify({ action: 'get_thresholds' }));
+});
     
     // Listen for messages
     socket.addEventListener('message', (event) => {
@@ -148,40 +149,42 @@ function sendMessage(type, data) {
  * Handle incoming messages from the server
  */
 function handleMessage(message) {
-    const type = message.type;
-    const data = message.data;
+    console.log("Received message:", message);
     
-    switch (type) {
-        case 'metrics_update':
-            updateMetrics(data);
-            break;
-        
-        case 'alarm_update':
-            updateAlarms(data);
-            break;
-        
-        case 'config':
-            updateConfig(data);
-            break;
-        
-        case 'simulation_control':
-            updateSimulationStatus(data);
-            break;
-        
-        case 'threshold_update':
-        case 'clear_alarms':
-        case 'simulate_spike':
-            // Handle confirmation messages
-            console.log(`Received ${type} response:`, data);
-            break;
-        
-        case 'error':
-            console.error('Server error:', data.message);
-            break;
-        
-        default:
-            console.warn('Unknown message type:', type);
+    // Handle metrics_update messages
+    if (message.type === 'metrics_update') {
+        updateMetrics(message.data);
+        return;
     }
+    
+    // Handle alarm_update messages
+    if (message.type === 'alarm_update') {
+        updateAlarms(message.status, message.history);
+        return;
+    }
+    
+    // Handle status responses
+    if (message.status) {
+        console.log(`Received status: ${message.status}`);
+        
+        if (message.status === 'simulation_started') {
+            startSimButton.disabled = true;
+            stopSimButton.disabled = false;
+        } else if (message.status === 'simulation_stopped') {
+            startSimButton.disabled = false;
+            stopSimButton.disabled = true;
+        }
+        
+        return;
+    }
+    
+    // Handle thresholds
+    if (message.thresholds) {
+        updateConfig({ thresholds: message.thresholds });
+        return;
+    }
+    
+    console.warn('Unknown message format:', message);
 }
 
 /**
@@ -232,48 +235,47 @@ function updateMetrics(metrics) {
 /**
  * Update alarm displays
  */
-function updateAlarms(data) {
-    const alarms = data.alarms || {};
-    const history = data.history || [];
+function updateAlarms(status, history) {
+    console.log("Updating alarms with:", status, history);
     
     // Update status classes on metric containers
-    for (const [metric, status] of Object.entries(alarms)) {
+    for (const [metric, alarmStatus] of Object.entries(status || {})) {
         const elements = metricElements[metric];
         if (!elements || !elements.container) continue;
+        
+        console.log(`Setting ${metric} to ${alarmStatus}`);
         
         // Remove existing status classes
         elements.container.classList.remove('normal', 'warning', 'critical');
         
         // Add current status class
-        elements.container.classList.add(status.status);
+        elements.container.classList.add(alarmStatus);
     }
     
     // Check highest severity alarm
     let highestSeverity = 'normal';
     let activeAlarms = [];
     
-    for (const [metric, status] of Object.entries(alarms)) {
-        if (status.status !== 'normal') {
+    for (const [metric, alarmStatus] of Object.entries(status || {})) {
+        if (alarmStatus !== 'normal') {
             const metricName = metric.charAt(0).toUpperCase() + metric.slice(1);
-            activeAlarms.push(`${metricName}: ${status.status.toUpperCase()}`);
+            activeAlarms.push(`${metricName}: ${alarmStatus.toUpperCase()}`);
             
-            if (status.status === 'critical') {
+            if (alarmStatus === 'critical') {
                 highestSeverity = 'critical';
-            } else if (status.status === 'warning' && highestSeverity !== 'critical') {
+            } else if (alarmStatus === 'warning' && highestSeverity !== 'critical') {
                 highestSeverity = 'warning';
             }
         }
     }
     
     // Update alarm status display
-    alarmStatus.className = '';
-    
     if (highestSeverity === 'normal') {
         alarmStatus.textContent = 'No Alarms';
-        alarmStatus.classList.add('no-alarm');
+        alarmStatus.className = 'no-alarm';
     } else {
         alarmStatus.textContent = activeAlarms.join(', ');
-        alarmStatus.classList.add(`${highestSeverity}-alarm`);
+        alarmStatus.className = `${highestSeverity}-alarm`;
         
         // Play sound if enabled and critical alarm
         if (soundEnabled && highestSeverity === 'critical' && alarmSound) {
@@ -284,7 +286,7 @@ function updateAlarms(data) {
     }
     
     // Update alarm history
-    if (alarmHistory) {
+    if (alarmHistory && history) {
         alarmHistory.innerHTML = '';
         
         if (history.length === 0) {
@@ -295,14 +297,14 @@ function updateAlarms(data) {
         } else {
             history.forEach(entry => {
                 const historyItem = document.createElement('div');
-                historyItem.className = `alarm-history-item ${entry.status}`;
+                historyItem.className = `alarm-history-item ${entry.status || 'normal'}`;
                 
                 const timestamp = document.createElement('span');
                 timestamp.className = 'timestamp';
-                timestamp.textContent = entry.timestamp;
+                timestamp.textContent = entry.timestamp || '';
                 
                 const message = document.createElement('div');
-                message.textContent = entry.message;
+                message.textContent = entry.message || '';
                 
                 historyItem.appendChild(timestamp);
                 historyItem.appendChild(message);
@@ -311,6 +313,48 @@ function updateAlarms(data) {
             });
         }
     }
+}
+
+/**
+ * Handle incoming messages from the server
+ */
+function handleMessage(message) {
+    console.log("Received message:", message);
+    
+    // Handle metrics_update messages
+    if (message.type === 'metrics_update') {
+        updateMetrics(message.data);
+        return;
+    }
+    
+    // Handle alarm_update messages
+    if (message.type === 'alarm_update') {
+        updateAlarms(message.status, message.history);
+        return;
+    }
+    
+    // Handle status responses
+    if (message.status) {
+        console.log(`Received status: ${message.status}`);
+        
+        if (message.status === 'simulation_started') {
+            startSimButton.disabled = true;
+            stopSimButton.disabled = false;
+        } else if (message.status === 'simulation_stopped') {
+            startSimButton.disabled = false;
+            stopSimButton.disabled = true;
+        }
+        
+        return;
+    }
+    
+    // Handle thresholds
+    if (message.thresholds) {
+        updateConfig({ thresholds: message.thresholds });
+        return;
+    }
+    
+    console.warn('Unknown message format:', message);
 }
 
 /**
@@ -370,6 +414,20 @@ function getThresholdValues() {
     return thresholds;
 }
 
+// And fix the threshold update button:
+updateThresholdsButton.addEventListener('click', () => {
+    const thresholds = getThresholdValues();
+    
+    for (const [metric, values] of Object.entries(thresholds)) {
+        socket.send(JSON.stringify({
+            action: 'update_threshold',
+            metric: metric,
+            warning: values.warning,
+            critical: values.critical
+        }));
+    }
+});
+
 /**
  * Initialize the dashboard
  */
@@ -378,22 +436,30 @@ function initDashboard() {
     connectWebSocket();
     
     // Set up event listeners
-    startSimButton.addEventListener('click', () => {
-        sendMessage('simulation_control', { action: 'start' });
-    });
-    
-    stopSimButton.addEventListener('click', () => {
-        sendMessage('simulation_control', { action: 'stop' });
-    });
-    
-    triggerSpikeButton.addEventListener('click', () => {
-        const metric = spikeMetricSelect.value;
-        sendMessage('simulate_spike', { metric, percentage: 0.9 });
-    });
-    
-    clearAlarmsButton.addEventListener('click', () => {
-        sendMessage('clear_alarms', {});
-    });
+    // Fix for the start button:
+// Start simulation button
+startSimButton.addEventListener('click', () => {
+    socket.send(JSON.stringify({ action: 'start_simulation' }));
+});
+
+// Stop simulation button
+stopSimButton.addEventListener('click', () => {
+    socket.send(JSON.stringify({ action: 'stop_simulation' }));
+});
+
+// Trigger spike button
+triggerSpikeButton.addEventListener('click', () => {
+    const metric = spikeMetricSelect.value;
+    socket.send(JSON.stringify({ 
+        action: 'trigger_spike',
+        metric: metric
+    }));
+});
+
+// Clear alarms button
+clearAlarmsButton.addEventListener('click', () => {
+    socket.send(JSON.stringify({ action: 'clear_alarms' }));
+});
     
     toggleSoundButton.addEventListener('click', () => {
         soundEnabled = !soundEnabled;

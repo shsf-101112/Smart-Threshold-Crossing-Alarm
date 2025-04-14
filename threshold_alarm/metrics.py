@@ -55,13 +55,15 @@ class MetricsFactory:
         updates = {}
         
         for metric_name, metric_data in self.metrics.items():
-            # Possibly change trend direction (20% chance)
-            if random.random() < 0.2:
-                metric_data["trend"] = 1 if random.random() > 0.5 else -1
-            
-            # Calculate new value based on trend and volatility
-            change = random.random() * metric_data["volatility"] * metric_data["trend"]
-            new_value = metric_data["value"] + change
+            # Increase probability of threshold crossings for testing
+            if random.random() < 0.3:  # 30% chance of spike
+                # Generate a value likely to exceed threshold
+                spike_percentage = random.uniform(0.7, 0.95)
+                new_value = metric_data["min"] + (metric_data["max"] - metric_data["min"]) * spike_percentage
+            else:
+                # Normal simulation logic
+                change = random.random() * metric_data["volatility"] * metric_data["trend"]
+                new_value = metric_data["value"] + change
             
             # Ensure value stays within bounds
             new_value = max(metric_data["min"], min(metric_data["max"], new_value))
@@ -77,6 +79,9 @@ class MetricsFactory:
                 "value": new_value,
                 "unit": metric_data["unit"]
             }
+        
+        # For debugging - log some values
+        log.msg(f"Simulated metrics: {', '.join([f'{k}={v['value']:.1f}{v['unit']}' for k,v in updates.items()])}")
         
         # Notify subscribers
         self.notify_subscribers(updates)

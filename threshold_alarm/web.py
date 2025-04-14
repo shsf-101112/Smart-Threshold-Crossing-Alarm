@@ -9,8 +9,8 @@ from twisted.web.resource import Resource
 from twisted.python import log
 from autobahn.twisted.websocket import WebSocketServerFactory
 from autobahn.twisted.resource import WebSocketResource
-
-from threshold_alarm.protocol import MetricsProtocol, MetricsFactory
+from threshold_alarm.protocol import MetricsProtocol
+from threshold_alarm.metrics import MetricsFactory
 from threshold_alarm.config import WEB_PORT, WEB_INTERFACE
 
 class RootResource(Resource):
@@ -71,8 +71,8 @@ def create_web_server(metrics_factory, threshold_manager, alarm_manager):
     
     # Create and start web server
     site = Site(root)
-    web_server = reactor.listenTCP(WEB_PORT, site, interface=WEB_INTERFACE)
+    web_server = reactor.listenTCP(WEB_PORT, site, interface='127.0.0.1')
     
-    log.msg(f"Web server started on http://{WEB_INTERFACE}:{WEB_PORT}")
+    log.msg(f"Web server started on http://{'127.0.0.1'}:{WEB_PORT}")
     
     return web_server
